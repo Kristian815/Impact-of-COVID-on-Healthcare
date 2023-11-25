@@ -1,0 +1,623 @@
+---
+title: "Final Paper Coding"
+author: "Group four"
+date: "July 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#the markdown file should be in the same path as the source file, or you can set 
+# check the separator, is it comma or tab or...
+# read.table('filename.txt',header= TRUE/FALSE, sep = '\t'# tab)
+library(citr)
+library(ggplot2)
+library(ggthemes)
+library(tidyverse)
+library(readr)
+library(packHV)
+library(plotrix)
+nurse <- read.csv('nurse1.csv')
+```
+## Objectives
+
+(1) Conduct EDA (you can use the techniques in the slides; you are also encouraged to be creative and use other techniques). 
+(2) Fit ARMA models. Pre-specify the orders. Try different order combinations and see which one provides the best fitting.
+
+```{r}
+summary(nurse)
+```
+
+
+## Description of the responses 
+In order to address our topic and research, we selected four responses: anxiety, depression, fear, and self-efficacy. With the standard scores 
+
+0.586395233	0.564051639	0.087884806
+0.27060576	0.328202582	0.280039722
+0.109731877	0.09632572	0.632075472
+0.03326713	0.01142006	
+
+```{r}
+nurse$anx_group <- NA
+nurse$dep_group <- NA
+nurse$fear_group <- NA
+
+nurse$anx_group[nurse$SAS_total<50]<-'no anxiety'
+nurse$anx_group[nurse$SAS_total>=50&nurse$SAS_total<60]<-'mild anxiety'
+nurse$anx_group[nurse$SAS_total>=60&nurse$SAS_total<70]<-'moderate anxiety'
+nurse$anx_group[nurse$SAS_total>=70]<-'severe anxiety'
+
+nurse$dep_group[nurse$SDS_total<53]<-'no depression'
+nurse$dep_group[nurse$SDS_total>=53&nurse$SDS_total<63]<-'mild depression'
+nurse$dep_group[nurse$SDS_total>=63&nurse$SDS_total<73]<-'moderate depression'
+nurse$dep_group[nurse$SDS_total>=73]<-'severe depression'
+
+nurse$fear_group[nurse$FSHPs_total<20]<-'mild fear'
+nurse$fear_group[nurse$FSHPs_total>=20&nurse$FSHPs_total<30]<-'moderate fear'
+nurse$fear_group[nurse$FSHPs_total>=30]<-'severe fear'
+
+#ar(mfrow=c(3,1))
+
+pielabels1<-c('no anxiety \n 58.6%','mild anxiety\n 27.1%','moderate anxiety\n 11.0%','severe anxiety\n 3.3%')
+pie3D(table(nurse$anx_group),explode=0.1,labels=pielabels1,main="Anxiety level distribution", col=c("#AFEEEE","#48D1CC","#4169E1","#0000CD"))
+
+pielabels2<-c('no depression\n 56.4%','mild depression\n 32.8%','moderate depression\n 9.6%','severe depression\n 1.1%')
+pie3D(table(nurse$dep_group),explode=0.1,labels=pielabels2,main="Depression level distribution", col=c("#AFEEEE","#48D1CC","#4169E1","#0000CD"))
+
+pielabels3<-c('mild fear\n 8.8%','moderate fear\n 28.0%','severe fear\n 63.2%')
+pie3D(table(nurse$fear_group),explode=0.1,labels=(pielabels3),main="Fear level distribution", cex = 0.01,col=c("#48D1CC","#4169E1","#0000CD"))
+
+```
+
+
+
+```{r}
+Age <- as.numeric(nurse$Age)
+hist_boxplot(Age,col="lightblue",freq=FALSE,density=TRUE, xlab = 'Age level')
+```
+
+```{r}
+Depression <- as.numeric(nurse$SDS_total)
+hist_boxplot(Depression,col="lightblue",freq=FALSE,density=TRUE, xlab = 'Depression level')
+```
+```{r}
+Fear <- as.numeric(nurse$FSHPs_total)
+hist_boxplot(Fear,col="lightblue",freq=FALSE,density=TRUE, xlab = 'Fear level')
+```
+```{r}
+Anxiety <- as.numeric(nurse$SAS_total)
+hist_boxplot(Anxiety,col="lightblue",freq=FALSE,density=TRUE, xlab = 'Anxiety level')
+```
+
+
+## Linear regression
+
+You can also embed plots, for example:
+### Anxiety
+```{r regression1_anxiety}
+naomit<-na.omit(nurse)
+lianx<- lm(formula= SAS_total ~ Age+Sex+marital.status+child.rearing+education.Bachelor.or.higher.2_Diploma1.+Prodessional.title..Junior1.intermediate.and.senior0.+ Monthly.household.income.USD.month..1440 + Clinical.experience.m. + Frontline.working.duration.d.+Average.working.hours.shift+Wuhan.as.origin..ys1.+Original.position..head.1. + Position.in.Wuhan...head.1. + Working.wards.changed.yes1 + Prior.traning + Prior.experience+ Willingness.to.participate.in.frontline,data = naomit)
+summary(lianx)
+confint(lianx)
+```
+```{r regression2_anxiety}
+summary(lianx)
+confint(lianx)
+```
+
+#### BIC for linear regression of anxiety 
+```{r,BIC_regression_anxiety1}
+anx_bic <- step(lianx,k=sqrt(nrow(naomit)))
+# Step:  AIC=9739.96
+# SAS_total ~ Wuhan.as.origin..ys1. + Willingness.to.participate.in.frontline
+```
+```{r,BIC_regression_anxiety2}
+summary(anx_bic)
+```
+####AIC for linear regression of anxiety 
+```{r AIC_regression_anxiety1}
+anx_aic <-step(lianx,k =2)
+# Step:  AIC=9577.27
+# SAS_total ~ Sex + marital.status + child.rearing + Monthly.household.income.USD.month..1440 + Frontline.working.duration.d. + Wuhan.as.origin..ys1. + Original.position..head.1. + Position.in.Wuhan...head.1. + Working.wards.changed.yes1 + Prior.traning + Willingness.to.participate.in.frontline
+```
+```{r,AIC_regression_anxiety2}
+summary(anx_aic)
+```
+#### Diagnose for linear regression of anxiety 
+```{r regression_anxiety_diagnose1}
+par(mfrow=c(1,2))
+plot(lianx)
+```
+#### equal variance for linear regression of anxiety  
+```{r anxiety1 r^2}
+summary(lianx)$r.squared
+```
+##### The R^2(equals to r^2) here is 0.0852, which is far from 1, and the line is flat (which supposed to be linearly increasing to be a good fit), so this model is not a good fit. A better model is needed for fitting.
+
+
+
+
+```{r,regression_anxiety}
+library(car)
+vif(lm(formula= SAS_total ~ Age+Sex+marital.status+child.rearing+education.Bachelor.or.higher.2_Diploma1.+Prodessional.title..Junior1.intermediate.and.senior0.+ Monthly.household.income.USD.month..1440 + Clinical.experience.m. + Frontline.working.duration.d.+Average.working.hours.shift+Wuhan.as.origin..ys1.+Original.position..head.1. + Position.in.Wuhan...head.1. + Working.wards.changed.yes1 + Prior.traning + Prior.experience+ Willingness.to.participate.in.frontline,data = naomit))
+
+```
+
+### Transformation with log 
+#### model 1 (only log y)
+```{r,regression_anxiety_log_trans1}
+log_anxiety1 = lm(formula= log1p(SAS_total) ~ Age+Sex+marital.status+child.rearing+education.Bachelor.or.higher.2_Diploma1.+Prodessional.title..Junior1.intermediate.and.senior0.+ Monthly.household.income.USD.month..1440 + Clinical.experience.m. + Frontline.working.duration.d.+Average.working.hours.shift+Wuhan.as.origin..ys1.+Original.position..head.1. + Position.in.Wuhan...head.1. + Working.wards.changed.yes1 + Prior.traning + Prior.experience+ Willingness.to.participate.in.frontline, data = naomit)
+summary(log_anxiety1)
+par(mfrow=c(1,2))
+plot(log_anxiety1)
+``` 
+#### equal variance for log transformation of anxiety  
+```{r anxiety2 r^2}
+summary(log_anxiety1)$r.squared
+```
+```{r anxiety exp coef&CI}
+round(exp(cbind(coef(log_anxiety1), confint(log_anxiety1)) - 1) * 100, 2)
+```
+
+####BIC for log transformation of anxiety 
+```{r,BIC_regression_anxiety3}
+log_anx_bic <- step(log_anxiety1,k=sqrt(nrow(naomit)))
+# Step:  AIC=-5914.76
+# log1p(SAS_total) ~ Wuhan.as.origin..ys1. + Willingness.to.participate.in.frontline
+```
+
+```{r anxiety bic exp coef&CI}
+round(exp(cbind(coef(log_anx_bic), confint(log_anx_bic)) - 1) * 100, 2)
+```
+
+```{r,BIC_regression_anxiety4}
+summary(log_anx_bic)
+```
+####AIC for log transformation of anxiety 
+```{r AIC_regression_anxiety3}
+log_anx_aic <-step(log_anxiety1,k =2)
+
+# Step:  AIC=-6076
+# log1p(SAS_total) ~ Sex + marital.status + child.rearing + Monthly.household.income.USD.month..1440 + Frontline.working.duration.d. + Wuhan.as.origin..ys1. + Original.position..head.1. +  Position.in.Wuhan...head.1. + Working.wards.changed.yes1 + Prior.traning + Willingness.to.participate.in.frontline
+
+```
+```{r,AIC_regression_anxiety4}
+summary(log_anx_aic)
+```
+```{r anxiety aic exp coef&CI}
+round(exp(cbind(coef(log_anx_aic), confint(log_anx_aic)) - 1) * 100, 2)
+```
+### ORDINAL LOGISTIC REGRESSION
+#### Since the anxiety is a group of ordered variables ranging no anxiety, mild anxiety, moderate anxiety to severe anxiety, so we choose to use ordinal logistic regression.
+```{r,library_ordinal}
+library(foreign)
+library(ggplot2)
+library(MASS)
+library(Hmisc)
+library(reshape2)
+```
+
+```{r,ordinal__anxiety}
+anx.polr=polr(factor(anx_group)~Age+Sex+marital.status+child.rearing+education.Bachelor.or.higher.2_Diploma1.+Prodessional.title..Junior1.intermediate.and.senior0.+ Monthly.household.income.USD.month..1440  + Clinical.experience.m.+ Frontline.working.duration.d.+Average.working.hours.shift+Wuhan.as.origin..ys1.+Original.position..head.1. + Position.in.Wuhan...head.1. + Working.wards.changed.yes1 + Prior.traning + Prior.experience+ Willingness.to.participate.in.frontline,data = naomit)
+summary(anx.polr)
+```
+
+#### p-value for model 1
+```{r}
+(ptable1 <- coef(summary(anx.polr)))
+p1 <- pnorm(abs(ptable1[, "t value"]), lower.tail = FALSE) * 2
+(ptable1 <- cbind(ptable1, "p value" = p1))
+```
+#### CI
+```{r}
+anx.ci <- confint(anx.polr)
+```
+#### OR & CI
+```{r}
+exp(cbind(OR = coef(anx.polr), anx.ci))
+```
+
+####BIC for ordinal 
+```{r,BIC_ordinal_anxiety5}
+or_anx_bic <- step(anx.polr,k=sqrt(nrow(naomit)))
+# Step:  AIC=4252.83
+# factor(anx_group) ~ 1
+```
+
+```{r,BIC_ordinal_anxiety6}
+summary(or_anx_bic)
+```
+```{r}
+(ptable1 <- coef(summary(or_anx_bic)))
+p1 <- pnorm(abs(ptable1[, "t value"]), lower.tail = FALSE) * 2
+(ptable1 <- cbind(ptable1, "p value" = p1))
+```
+####AIC for ordinal 
+```{r AIC_regression_anxiety5}
+or_anx_aic <- step(anx.polr,k =2)
+#  AIC=4106.7
+# factor(anx_group) ~ Wuhan.as.origin..ys1. + Working.wards.changed.yes1
+```
+```{r,AIC_ordinal_anxiety6}
+summary(or_anx_aic)
+```
+
+```{r}
+(ptable1 <- coef(summary(or_anx_aic)))
+p1 <- pnorm(abs(ptable1[, "t value"]), lower.tail = FALSE) * 2
+(ptable1 <- cbind(ptable1, "p value" = p1))
+```
+
+```{r vif_regression_anxiety}
+vif(anx.polr)
+```
+
+
+### depression
+
+```{r regression_depression1}
+lidep<- lm(formula= SDS_total ~ Age+Sex+marital.status+child.rearing+education.Bachelor.or.higher.2_Diploma1.+Prodessional.title..Junior1.intermediate.and.senior0.+ Monthly.household.income.USD.month..1440 + Clinical.experience.m. + Frontline.working.duration.d.+Average.working.hours.shift+Wuhan.as.origin..ys1.+Original.position..head.1. + Position.in.Wuhan...head.1. + Working.wards.changed.yes1 + Prior.traning + Prior.experience+ Willingness.to.participate.in.frontline,data = naomit)
+summary(lidep)
+confint(lidep)
+```
+
+#### BIC for linear regression of depression 
+```{r}
+dep_bic <- step(lidep,k=sqrt(nrow(naomit)))
+# Step:  AIC=Step:  AIC=9792.7
+# SDS_total ~ Wuhan.as.origin..ys1. + Willingness.to.participate.in.frontline
+```
+
+
+```{r}
+summary(dep_bic)
+```
+
+####AIC for linear regression of depression 
+```{r}
+dep_aic <-step(lidep,k =2)
+# Step:  AIC=9610.69
+# SDS_total ~ Age + Sex + marital.status + child.rearing + Prodessional.title..Junior1.intermediate.and.senior0. + Monthly.household.income.USD.month..1440 + Frontline.working.duration.d. + Wuhan.as.origin..ys1. + Original.position..head.1. + Position.in.Wuhan...head.1. + Working.wards.changed.yes1 + Prior.traning + Willingness.to.participate.in.frontline
+```
+```{r}
+summary(dep_aic)
+```
+
+#### Diagnose for linear regression of depression
+```{r regression_anxiety_diagnose2}
+par(mfrow=c(1,2))
+plot(lidep)
+```
+#### equal variance for linear regression of depression 
+```{r dep r^2 }
+summary(lidep)$r.squared
+```
+##### The R^2(equals to r^2) here is 0.0896, which is far from 1, and the line is flat (which supposed to be linearly increasing to be a good fit), so this model is not a good fit. A better model is needed for fitting.
+
+```{r,regression_depression2}
+library(car)
+vif(lm(formula= SDS_total ~ Age+Sex+marital.status+child.rearing+education.Bachelor.or.higher.2_Diploma1.+Prodessional.title..Junior1.intermediate.and.senior0.+ Monthly.household.income.USD.month..1440 + Clinical.experience.m. + Frontline.working.duration.d.+Average.working.hours.shift+Wuhan.as.origin..ys1.+Original.position..head.1. + Position.in.Wuhan...head.1. + Working.wards.changed.yes1 + Prior.traning + Prior.experience+ Willingness.to.participate.in.frontline,data = naomit))
+
+```
+
+### Transformation with log 
+#### model 1 (only log y)
+```{r,regression_depression_log_trans1}
+log_dep1 = lm(formula= log1p(SDS_total) ~ Age+Sex+marital.status+child.rearing+education.Bachelor.or.higher.2_Diploma1.+Prodessional.title..Junior1.intermediate.and.senior0.+ Monthly.household.income.USD.month..1440 + Clinical.experience.m. + Frontline.working.duration.d.+Average.working.hours.shift+Wuhan.as.origin..ys1.+Original.position..head.1. + Position.in.Wuhan...head.1. + Working.wards.changed.yes1 + Prior.traning + Prior.experience+ Willingness.to.participate.in.frontline, data = naomit)
+summary(log_dep1)
+par(mfrow=c(1,2))
+plot(log_dep1)
+``` 
+#### equal variance for log transformation of depression  
+```{r dep2 r^2}
+summary(log_dep1)$r.squared
+```
+```{r depression exp coef&CI}
+round(exp(cbind(coef(log_dep1), confint(log_dep1)) - 1) * 100, 2)
+```
+####BIC for log transformation of depression 
+```{r,BIC_regression_depression1}
+log_dep_bic <- step(log_dep1,k=sqrt(nrow(naomit)))
+
+# Step:  AIC=-5805.7
+# log1p(SDS_total) ~ Wuhan.as.origin..ys1. + Willingness.to.participate.in.frontline
+
+```
+
+```{r,BIC_regression_depression2}
+summary(log_dep_bic)
+```
+```{r depression BIC exp coef&CI}
+round(exp(cbind(coef(log_dep_bic), confint(log_dep_bic)) - 1) * 100, 2)
+```
+####AIC for log transformation of depression 
+```{r AIC_regression_depression1}
+log_dep_aic <-step(log_dep1,k =2)
+
+# Step:  AIC=-5983.81
+# log1p(SDS_total) ~ Age + Sex + marital.status + child.rearing + Monthly.household.income.USD.month..1440 + Clinical.experience.m. + Frontline.working.duration.d. + Wuhan.as.origin..ys1. + Original.position..head.1. + Position.in.Wuhan...head.1. + Working.wards.changed.yes1 + Prior.traning + Willingness.to.participate.in.frontline
+
+
+```
+```{r,AIC_regression_depression2}
+summary(log_dep_aic)
+```
+```{r depression AIC exp coef&CI}
+round(exp(cbind(coef(log_dep_aic), confint(log_dep_aic)) - 1) * 100, 2)
+```
+### ORDINAL LOGISTIC REGRESSION
+#### Since the depression is a group of ordered variables ranging from no depression, mild depression, moderate depression to severe depression, so we choose to use ordinal logistic regression.
+
+```{r,ordinal__depression}
+dep.polr=polr(factor(dep_group)~Age+Sex+marital.status+child.rearing+education.Bachelor.or.higher.2_Diploma1.+Prodessional.title..Junior1.intermediate.and.senior0.+ Monthly.household.income.USD.month..1440  + Clinical.experience.m.+ Frontline.working.duration.d.+Average.working.hours.shift+Wuhan.as.origin..ys1.+Original.position..head.1. + Position.in.Wuhan...head.1. + Working.wards.changed.yes1 + Prior.traning + Prior.experience+ Willingness.to.participate.in.frontline,data = naomit)
+summary(dep.polr)
+```
+#### p-value 
+```{r}
+(ptable1 <- coef(summary(dep.polr)))
+p1 <- pnorm(abs(ptable1[, "t value"]), lower.tail = FALSE) * 2
+(ptable1 <- cbind(ptable1, "p value" = p1))
+```
+#### CI
+```{r}
+dep.ci <- confint(dep.polr)
+```
+#### OR & CI
+```{r}
+exp(cbind(OR = coef(dep.polr), dep.ci))
+```
+
+####BIC for ordinal 
+```{r,BIC_ordinal_depression3}
+or_dep_bic <-  step(dep.polr,k=sqrt(nrow(naomit)))
+# Step:  AIC=4034.01
+# factor(dep_group) ~ Wuhan.as.origin..ys1.
+```
+```{r,bIC_ordinal_depression4}
+summary(or_dep_bic)
+```
+```{r}
+(ptable1 <- coef(summary(or_dep_bic)))
+p1 <- pnorm(abs(ptable1[, "t value"]), lower.tail = FALSE) * 2
+(ptable1 <- cbind(ptable1, "p value" = p1))
+```
+####AIC for ordinal 
+```{r AIC_regression_depression3}
+or_dep_aic <- step(dep.polr,k =2)
+# Step:  AIC=3837.36
+# factor(dep_group) ~ child.rearing + Monthly.household.income.USD.month..1440 + Frontline.working.duration.d. + Wuhan.as.origin..ys1. + Position.in.Wuhan...head.1. + Working.wards.changed.yes1 + Prior.traning + Willingness.to.participate.in.frontline
+```
+```{r,AIC_ordinal_depression4}
+summary(or_dep_aic)
+```
+```{r}
+(ptable1 <- coef(summary(or_dep_aic)))
+p1 <- pnorm(abs(ptable1[, "t value"]), lower.tail = FALSE) * 2
+(ptable1 <- cbind(ptable1, "p value" = p1))
+```
+
+```{r VIF_ordinal_regression_depression}
+vif(dep.polr)
+```
+
+### fear
+```{r regression_fear1}
+lifear<- lm(formula= FSHPs_total ~ Age+Sex+marital.status+child.rearing+education.Bachelor.or.higher.2_Diploma1.+Prodessional.title..Junior1.intermediate.and.senior0.+ Monthly.household.income.USD.month..1440 + Clinical.experience.m. + Frontline.working.duration.d.+Average.working.hours.shift+Wuhan.as.origin..ys1.+Original.position..head.1. + Position.in.Wuhan...head.1. + Working.wards.changed.yes1 + Prior.traning + Prior.experience+ Willingness.to.participate.in.frontline,data = naomit)
+summary(lifear)
+confint(lifear)
+```
+
+#### BIC for linear regression of fear 
+```{r}
+fear_bic<-step(lifear,k=sqrt(nrow(naomit)))
+# Step:  AIC=8130.76
+# FSHPs_total ~ Sex + Wuhan.as.origin..ys1.
+```
+
+```{r}
+summary(fear_bic)
+
+```
+####AIC for linear regression of fear 
+```{r}
+fear_aic<-step(lifear,k =2)
+# Step:  AIC=7927.13
+# FSHPs_total ~ Age + Sex + marital.status + education.Bachelor.or.higher.2_Diploma1. + Clinical.experience.m. + Average.working.hours.shift + Wuhan.as.origin..ys1. + Original.position..head.1. + Prior.traning + Prior.experience + Willingness.to.participate.in.frontline
+```
+
+```{r}
+summary(fear_aic)
+```
+
+#### Diagnose for linear regression of fear 
+```{r regression_fear_diagnose1}
+par(mfrow=c(1,2))
+plot(lifear)
+```
+#### equal variance for linear regression of fear  
+```{r fear1 r^2}
+summary(lifear)$r.squared
+```
+##### The R^2(equals to r^2) here is 0.1242, which is far from 1, and the line is flat (which supposed to be linearly increasing to be a good fit), so this model is not a good fit. A better model is needed for fitting.
+
+```{r,regression_fear2}
+library(car)
+vif(lm(formula= FSHPs_total ~ Age+Sex+marital.status+child.rearing+education.Bachelor.or.higher.2_Diploma1.+Prodessional.title..Junior1.intermediate.and.senior0.+ Monthly.household.income.USD.month..1440 + Clinical.experience.m. + Frontline.working.duration.d.+Average.working.hours.shift+Wuhan.as.origin..ys1.+Original.position..head.1. + Position.in.Wuhan...head.1. + Working.wards.changed.yes1 + Prior.traning + Prior.experience+ Willingness.to.participate.in.frontline,data = naomit))
+
+```
+
+### Transformation with log 
+#### model 1 (only log y)
+```{r,regression_fear_log_trans1}
+log_fear1 = lm(formula= log1p(FSHPs_total) ~ Age+Sex+marital.status+child.rearing+education.Bachelor.or.higher.2_Diploma1.+Prodessional.title..Junior1.intermediate.and.senior0.+ Monthly.household.income.USD.month..1440 + Clinical.experience.m. + Frontline.working.duration.d.+Average.working.hours.shift+Wuhan.as.origin..ys1.+Original.position..head.1. + Position.in.Wuhan...head.1. + Working.wards.changed.yes1 + Prior.traning + Prior.experience+ Willingness.to.participate.in.frontline, data = naomit)
+summary(log_fear1)
+par(mfrow=c(1,2))
+plot(log_fear1)
+``` 
+```{r fear exp coef&CI}
+round(exp(cbind(coef(log_fear1), confint(log_fear1)) - 1) * 100, 2)
+```
+
+#### equal variance for log transformation of fear  
+```{r fear2 r^2}
+summary(log_fear1)$r.squared
+```
+####BIC for log transformation of fear 
+```{r,BIC_regression_fear3}
+log_fear_bic <- step(log_fear1,k=sqrt(nrow(naomit)))
+# Step:  AIC=-4717.28
+# log1p(FSHPs_total) ~ Sex + Wuhan.as.origin..ys1.
+
+
+```
+```{r,BIC_regression_depression4}
+summary(log_fear_bic)
+```
+```{r fear BIC exp coef&CI}
+round(exp(cbind(coef(log_fear_bic), confint(log_fear_bic)) - 1) * 100, 2)
+```
+####AIC for log transformation of fear 
+```{r AIC_regression_fear3}
+log_fear_aic <- step(log_fear1,k =2)
+
+# Step:  AIC=-4912.96
+# log1p(FSHPs_total) ~ Age + Sex + marital.status + education.Bachelor.or.higher.2_Diploma1. + Average.working.hours.shift + Wuhan.as.origin..ys1. + Original.position..head.1. + Prior.experience
+```
+```{r,AIC_regression_fear4}
+summary(log_fear_aic)
+```
+```{r fear AIC exp coef&CI}
+round(exp(cbind(coef(log_fear_aic), confint(log_fear_aic)) - 1) * 100, 2)
+```
+### ORDINAL LOGISTIC REGRESSION
+#### Since the anxiety is a group of ordered variables ranging from no fear, mild fear, moderate fear to severe fear, so we choose to use ordinal logistic regression.
+
+```{r,ordinal__fear}
+fear.polr=polr(factor(fear_group)~Age+Sex+marital.status+child.rearing+education.Bachelor.or.higher.2_Diploma1.+Prodessional.title..Junior1.intermediate.and.senior0.+ Monthly.household.income.USD.month..1440  + Clinical.experience.m.+ Frontline.working.duration.d.+Average.working.hours.shift+Wuhan.as.origin..ys1.+Original.position..head.1. + Position.in.Wuhan...head.1. + Working.wards.changed.yes1 + Prior.traning + Prior.experience+ Willingness.to.participate.in.frontline,data = naomit)
+summary(fear.polr)
+```
+#### p-value for model 1
+```{r}
+(ptable1 <- coef(summary(fear.polr)))
+p1 <- pnorm(abs(ptable1[, "t value"]), lower.tail = FALSE) * 2
+(ptable1 <- cbind(ptable1, "p value" = p1))
+```
+#### CI
+```{r}
+fear.ci <- confint(fear.polr)
+```
+#### OR & CI
+```{r}
+round(exp(cbind(OR = coef(fear.polr), fear.ci)),4)
+```
+
+####BIC for ordinal 
+```{r,BIC_ordinal_fear5}
+or_fear_bic <- step(fear.polr,k=sqrt(nrow(naomit)))
+# Step:  AIC=4252.83
+# factor(anx_group) ~ 1
+```
+```{r,BIC_ordinal_fear6}
+summary(or_fear_bic)
+```
+```{r}
+(ptable1 <- coef(summary(or_fear_bic)))
+p1 <- pnorm(abs(ptable1[, "t value"]), lower.tail = FALSE) * 2
+(ptable1 <- cbind(ptable1, "p value" = p1))
+```
+####AIC for ordinal 
+```{r AIC_regression_fear5}
+or_fear_aic <- step(fear.polr,k =2)
+# Step:  AIC=3291.66
+# factor(fear_group) ~ Age + Sex + marital.status + education.Bachelor.or.higher.2_Diploma1. + Average.working.hours.shift + Wuhan.as.origin..ys1. + Original.position..head.1. + Prior.experience + Willingness.to.participate.in.frontline
+```
+```{r,AIC_ordinal_depression6}
+summary(or_fear_aic)
+```
+```{r}
+(ptable1 <- coef(summary(or_fear_aic)))
+p1 <- pnorm(abs(ptable1[, "t value"]), lower.tail = FALSE) * 2
+(ptable1 <- cbind(ptable1, "p value" = p1))
+```
+```{r VIF_regression_fear3}
+vif(fear.polr)
+```
+```{r}
+label1 <- c(
+  `(Intercept)` = "Intercept",
+  Age = "Age (year)",
+  Sex = "Sex", 
+  marital.status = "Marital Status", 
+  child.rearing = "Child Rearing",
+  education.Bachelor.or.higher.2_Diploma1. = "Education",
+  Prodessional.title..Junior1.intermediate.and.senior0. = "Prodessional Title", 
+  Monthly.household.income.USD.month..1440 = "Monthly Household Income",
+  Clinical.experience.m.= "Clinical Experience",
+  Frontline.working.duration.d. = "Frontline Working Duration",
+  Average.working.hours.shift = "Average Working Hours Shift",
+  Wuhan.as.origin..ys1. = "Wuhan as Origin",
+  Original.position..head.1. = "Original Position",
+  Position.in.Wuhan...head.1. = "Position in Wuhan",
+  Working.wards.changed.yes1 = "Working Wards Changed",
+  Prior.traning = "Prior Traning",
+  Prior.experience = "Prior Experience",
+  Willingness.to.participate.in.frontline = "Willingness to Participate in Frontline"
+)
+```
+
+### linear table
+```{r linear table}
+library(sjPlot)
+tab_model(lianx,lidep,lifear,title = "Table 2: Linear Regression Model",pred.labels = label1, 
+  dv.labels = c("anxiety", "depression","fear"),
+  string.ci = "CI (95%)", string.p = "P-Value")
+```
+### linear bic table
+```{r bic table}
+tab_model(anx_bic,dep_bic,fear_bic,title = "Appendix Table 1: Linear Regression BIC Model",pred.labels = label1,
+  dv.labels = c("anxiety", "depression","fear"),
+  string.ci = "CI (95%)", string.p = "P-Value")
+```
+### linear aic table
+```{r aic table}
+tab_model(anx_aic,dep_aic,fear_aic,title = "Appendix Table 2: Linear Regression AIC Model", pred.labels = label1,
+  dv.labels = c("anxiety", "depression","fear"),
+  string.ci = "CI (95%)", string.p = "P-Value")
+```
+### log table
+```{r log table}
+tab_model(log_anxiety1,log_dep1,log_fear1, title = "Table 3: Log Transformation Model", pred.labels = label1,
+  dv.labels = c("anxiety", "depression","fear"),
+  string.ci = "CI (95%)", string.p = "P-Value")
+```
+### log bic table
+```{r log bic table}
+tab_model(log_anx_bic,log_dep_bic,log_fear_bic,title = "Appendix Table 3: Log Transformation BIC Model",pred.labels = label1,
+  dv.labels = c("anxiety", "depression","fear"),
+  string.ci = "CI (95%)", string.p = "P-Value")
+```
+### log aic table
+```{r log aic table}
+tab_model(log_anx_aic,log_dep_aic,log_fear_aic,title = "Appendix Table 4: Log Transformation AIC Model",pred.labels = label1,
+  dv.labels = c("anxiety", "depression","fear"),
+  string.ci = "CI (95%)", string.p = "P-Value")
+```
+### ordinal table
+```{r ordinal table}
+tab_model(anx.polr,dep.polr,fear.polr, title = "Table 4: Ordinal Logistic Regression Model",pred.labels = label1,
+  dv.labels = c("anxiety", "depression","fear"),
+  string.ci = "CI (95%)", string.p = "P-Value")
+```
+### bic ordinal table
+```{r bic ordinal table}
+tab_model(or_anx_bic,or_dep_bic,or_fear_bic,title = "Appendix Table 5: Ordinal Logistic BIC Model",pred.labels = label1,
+  dv.labels = c("anxiety", "depression","fear"),
+  string.ci = "CI (95%)", string.p = "P-Value")
+```
+###aic ordinal table
+```{r aic ordinal table}
+tab_model(or_anx_aic,or_dep_aic,or_fear_aic,title = "Appendix Table 6: Ordinal Logistic AIC Model", pred.labels = label1,
+  dv.labels = c("anxiety", "depression","fear"),
+  string.ci = "CI (95%)", string.p = "P-Value")
+```
+
+
